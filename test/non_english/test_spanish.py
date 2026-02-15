@@ -1,20 +1,19 @@
 import importlib
 
+import pytest
+
 references = importlib.import_module("bible-io-references.references")
 books = importlib.import_module("bible-io-references.bible_book_enums")
 
 
-def test_parse_spanish_reference():
-    ref = references.VerseRef.from_str("Juan 3:16")
+@pytest.mark.parametrize(
+    "reference, expected",
+    [
+        ("Juan 3:16", (books.BibleBookEnum.John, 3, 16)),
+        ("Mat. 5:9", (books.BibleBookEnum.Matthew, 5, 9)),
+    ],
+)
+def test_parse_spanish_reference(reference, expected):
+    ref = references.VerseRef.from_str(reference)
 
-    assert ref.book == books.BibleBookEnum.John
-    assert ref.chapter == 3
-    assert ref.verse == 16
-
-
-def test_parse_spanish_abbreviated_reference():
-    ref = references.VerseRef.from_str("Mat. 5:9")
-
-    assert ref.book == books.BibleBookEnum.Matthew
-    assert ref.chapter == 5
-    assert ref.verse == 9
+    assert (ref.book, ref.chapter, ref.verse) == expected

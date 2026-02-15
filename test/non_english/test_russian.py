@@ -1,20 +1,19 @@
 import importlib
 
+import pytest
+
 references = importlib.import_module("bible-io-references.references")
 books = importlib.import_module("bible-io-references.bible_book_enums")
 
 
-def test_parse_russian_reference():
-    ref = references.VerseRef.from_str("Иоанна 3:16")
+@pytest.mark.parametrize(
+    "reference, expected",
+    [
+        ("Иоанна 3:16", (books.BibleBookEnum.John, 3, 16)),
+        ("Ин. 3:16", (books.BibleBookEnum.John, 3, 16)),
+    ],
+)
+def test_parse_russian_reference(reference, expected):
+    ref = references.VerseRef.from_str(reference)
 
-    assert ref.book == books.BibleBookEnum.John
-    assert ref.chapter == 3
-    assert ref.verse == 16
-
-
-def test_parse_russian_abbreviated_reference():
-    ref = references.VerseRef.from_str("Ин. 3:16")
-
-    assert ref.book == books.BibleBookEnum.John
-    assert ref.chapter == 3
-    assert ref.verse == 16
+    assert (ref.book, ref.chapter, ref.verse) == expected
