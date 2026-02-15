@@ -1,29 +1,25 @@
 import importlib
 
+import pytest
+
 references = importlib.import_module("bible-io-references.references")
 books = importlib.import_module("bible-io-references.bible_book_enums")
 
 
-def test_parse_standard_reference():
-    ref = references.VerseRef.from_str("John 3:16")
+@pytest.mark.parametrize(
+    "reference, expected",
+    [
+        ("John 3:16", (books.BibleBookEnum.John, 3, 16)),
+        ("jo 1:1", (books.BibleBookEnum.John, 1, 1)),
+    ],
+)
+def test_parse_reference(reference, expected):
+    ref = references.VerseRef.from_str(reference)
 
-    assert ref.book == books.BibleBookEnum.John
-    assert ref.chapter == 3
-    assert ref.verse == 16
-
-
-def test_parse_with_book_abbreviation():
-    ref = references.VerseRef.from_str("jo 1:1")
-
-    assert ref.book == books.BibleBookEnum.John
-    assert ref.chapter == 1
-    assert ref.verse == 1
+    assert (ref.book, ref.chapter, ref.verse) == expected
 
 
-def test_parse_invalid_reference_raises_parse_error():
-    try:
-        references.VerseRef.from_str("NotABook 3:16")
-    except references.ParseVerseRefError:
-        pass
-    else:
-        raise AssertionError("expected ParseVerseRefError")
+@pytest.mark.parametrize("reference", ["NotABook 3:16"])
+def test_parse_invalid_reference_raises_parse_error(reference):
+    with pytest.raises(references.ParseVerseRefError):
+        references.VerseRef.from_str(reference)
