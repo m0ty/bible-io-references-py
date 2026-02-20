@@ -19,6 +19,12 @@ _VERSE_REF_PATTERN = re.compile(
     r"^\s*(?P<book>.+?)\s+(?P<chapter>\d+)\s*:\s*(?P<verse>\d+)\s*$"
 )
 
+_VERSE_RANGE_REF_PATTERN = re.compile(
+    r"^\s*(?P<start_book>.+?)\s+(?P<start_chapter>\d+)\s*:\s*(?P<start_verse>\d+)\s*"
+    r"[-–—]\s*(?:(?P<end_book>.+?)\s+)?(?:(?P<end_chapter>\d+)\s*:\s*)?"
+    r"(?P<end_verse>\d+)\s*$"
+)
+
 def _register_book_terms(
     table: Dict[str, BibleBookEnum],
     source: Dict[str, Dict[BibleBookEnum, Iterable[str]]],
@@ -114,4 +120,39 @@ class VerseRangeRef:
         return (
             f"{self.start.book.full_name} {self.start.chapter}:{self.start.verse}"
             f"-{self.end.book.full_name} {self.end.chapter}:{self.end.verse}"
+        )
+
+    @classmethod
+    def from_str(cls, ref: str) -> "VerseRangeRef":
+        """Parse a verse range like ``John 3:16-17`` into a VerseRangeRef."""
+        if not isinstance(ref, str) or not ref:
+            raise ParseVerseRefError()
+
+        match = _VERSE_RANGE_REF_PATTERN.match(ref)
+        if not match:
+            raise ParseVerseRefError()
+
+        try:
+            start_chapter = int(match.group("start_chapter"))
+            start_verse = int(match.group("start_verse"))
+            end_verse = int(match.group("end_verse"))
+            end_chapter_match = match.group("end_chapter")
+            end_chapter = (
+                int(end_chapter_match)
+                if end_chapter_match is not None
+                else start_chapter
+            )
+        except ValueError as e:
+            raise ParseVerseRefError() from e
+
+        if min(start_chapter, start_verse, end_chapter, end_verse) <= 0:
+            raise ParseVerseRefError()
+
+        start_book = _parse_book_name(match.group("start_book"))
+        end_book_match = match.group("end_book")
+        end_book = _parse_book_name(end_book_match) if end_book_match else start_book
+
+        return cls(
+            start=VerseRef(book_enum=start_book, chapter=start_chapter, verse=start_verse),
+            end=VerseRef(book_enum=end_book, chapter=end_chapter, verse=end_verse),
         )
