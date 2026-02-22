@@ -16,7 +16,7 @@ class ParseVerseRefError(ValueError):
 
 
 _VERSE_REF_PATTERN = re.compile(
-    r"^\s*(?P<book>.+?)\s+(?P<chapter>\d+)\s*:\s*(?P<verse>\d+)\s*$"
+    r"^\s*(?P<book>.+?)\s+(?P<chapter>\d+)\s*[:.]\s*(?P<verse>\d+)\s*$"
 )
 
 _VERSE_RANGE_REF_PATTERN = re.compile(
