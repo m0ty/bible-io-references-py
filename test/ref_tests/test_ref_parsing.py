@@ -10,6 +10,7 @@ books = importlib.import_module("bible-io-references.bible_book_enums")
     "reference, expected",
     [
         ("John 3:16", (books.BibleBookEnum.John, 3, 16)),
+        ("John 3.16", (books.BibleBookEnum.John, 3, 16)),
         ("jo 1:1", (books.BibleBookEnum.John, 1, 1)),
     ],
 )
@@ -76,3 +77,12 @@ def test_parse_verse_range(reference, expected):
 def test_parse_invalid_verse_range_raises_parse_error(reference):
     with pytest.raises(references.ParseVerseRefError):
         references.VerseRangeRef.from_str(reference)
+
+
+def test_parse_all_books_with_colon_and_dot_separators():
+    for book in books.BibleBookEnum:
+        colon_ref = references.VerseRef.from_str(f"{book.full_name} 1:1")
+        dot_ref = references.VerseRef.from_str(f"{book.full_name} 1.1")
+
+        assert (colon_ref.book, colon_ref.chapter, colon_ref.verse) == (book, 1, 1)
+        assert (dot_ref.book, dot_ref.chapter, dot_ref.verse) == (book, 1, 1)
