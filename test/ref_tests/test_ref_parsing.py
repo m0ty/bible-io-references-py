@@ -50,6 +50,13 @@ def test_parse_invalid_reference_raises_parse_error(reference):
             ),
         ),
         (
+            "John 3.16-4.1",
+            (
+                (books.BibleBookEnum.John, 3, 16),
+                (books.BibleBookEnum.John, 4, 1),
+            ),
+        ),
+        (
             "John 3:16-Acts 1:2",
             (
                 (books.BibleBookEnum.John, 3, 16),

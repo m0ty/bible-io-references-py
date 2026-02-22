@@ -36,6 +36,20 @@ def test_parse_spanish_reference(reference, expected):
                 (books.BibleBookEnum.Matthew, 5, 10),
             ),
         ),
+        (
+            "Juan 3:16-4:1",
+            (
+                (books.BibleBookEnum.John, 3, 16),
+                (books.BibleBookEnum.John, 4, 1),
+            ),
+        ),
+        (
+            "Juan 3.16-4.1",
+            (
+                (books.BibleBookEnum.John, 3, 16),
+                (books.BibleBookEnum.John, 4, 1),
+            ),
+        ),
     ],
 )
 def test_parse_spanish_verse_range(reference, expected):

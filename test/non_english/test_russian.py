@@ -36,6 +36,20 @@ def test_parse_russian_reference(reference, expected):
                 (books.BibleBookEnum.John, 3, 17),
             ),
         ),
+        (
+            "Иоанна 3:16-4:1",
+            (
+                (books.BibleBookEnum.John, 3, 16),
+                (books.BibleBookEnum.John, 4, 1),
+            ),
+        ),
+        (
+            "Иоанна 3.16-4.1",
+            (
+                (books.BibleBookEnum.John, 3, 16),
+                (books.BibleBookEnum.John, 4, 1),
+            ),
+        ),
     ],
 )
 def test_parse_russian_verse_range(reference, expected):

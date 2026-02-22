@@ -20,8 +20,8 @@ _VERSE_REF_PATTERN = re.compile(
 )
 
 _VERSE_RANGE_REF_PATTERN = re.compile(
-    r"^\s*(?P<start_book>.+?)\s+(?P<start_chapter>\d+)\s*:\s*(?P<start_verse>\d+)\s*"
-    r"[-–—]\s*(?:(?P<end_book>.+?)\s+)?(?:(?P<end_chapter>\d+)\s*:\s*)?"
+    r"^\s*(?P<start_book>.+?)\s+(?P<start_chapter>\d+)\s*[:.]\s*(?P<start_verse>\d+)\s*"
+    r"[-–—]\s*(?:(?P<end_book>.+?)\s+)?(?:(?P<end_chapter>\d+)\s*[:.]\s*)?"
     r"(?P<end_verse>\d+)\s*$"
 )
 

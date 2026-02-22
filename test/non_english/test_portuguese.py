@@ -36,6 +36,20 @@ def test_parse_portuguese_reference(reference, expected):
                 (books.BibleBookEnum.Revelation, 21, 5),
             ),
         ),
+        (
+            "João 3:16-4:1",
+            (
+                (books.BibleBookEnum.John, 3, 16),
+                (books.BibleBookEnum.John, 4, 1),
+            ),
+        ),
+        (
+            "João 3.16-4.1",
+            (
+                (books.BibleBookEnum.John, 3, 16),
+                (books.BibleBookEnum.John, 4, 1),
+            ),
+        ),
     ],
 )
 def test_parse_portuguese_verse_range(reference, expected):
