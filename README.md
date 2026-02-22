@@ -1,8 +1,39 @@
 # bible-io-references-py
 
-## Verse reference parsing
+Parse Bible verse references into structured Python objects.
 
-You can parse text references into `VerseRef` objects:
+## What this package supports
+
+- Parsing a **single verse reference** into a `VerseRef`:
+  - `John 3:16`
+  - `jo 3:16` (enum abbreviation)
+- Parsing a **verse range** into a `VerseRangeRef`:
+  - `John 3:16-17`
+  - `John 3:16–17` (en dash)
+  - `John 3:16-4:1` (same book, different chapter)
+  - `John 3:16-Acts 1:2` (cross-book range)
+- Flexible separators and spacing:
+  - chapter/verse separator can be `:` or `.`
+  - range separator can be `-`, `–`, or `—`
+  - extra surrounding whitespace is tolerated
+- Book name matching from:
+  - English full names (for all enum books)
+  - enum abbreviations (for all enum books)
+  - localized names and abbreviations for:
+    - Russian (`ru`)
+    - Hebrew (`he`)
+    - Spanish (`es`)
+    - Portuguese (`pt`)
+
+## Installation
+
+```bash
+pip install bible-io-references
+```
+
+## Usage
+
+### Parse a single verse
 
 ```python
 from importlib import import_module
@@ -13,25 +44,55 @@ ref = references.VerseRef.from_str("John 3:16")
 print(ref.book.full_name)  # John
 print(ref.chapter)         # 3
 print(ref.verse)           # 16
+print(str(ref))            # John 3:16
 ```
 
-The parser currently accepts full book names (e.g. `John 3:16`) and enum abbreviations
-(e.g. `jo 3:16`).
+### Parse a verse range
 
-It also supports localized book names in Russian and Hebrew, for example:
+```python
+from importlib import import_module
 
-- `Иоанна 3:16`
-- `יוחנן 3:16`
+references = import_module("bible-io-references.references")
 
-It also accepts localized abbreviations (including common trailing-dot Russian style), for example:
+rng = references.VerseRangeRef.from_str("John 3:16-4:1")
+print(rng.start.book.full_name, rng.start.chapter, rng.start.verse)  # John 3 16
+print(rng.end.book.full_name, rng.end.chapter, rng.end.verse)        # John 4 1
+print(str(rng))                                                       # John 3:16-4:1
+```
 
-- `Ин. 3:16`
-- `יוח 3:16`
+### Parse localized references
 
+```python
+from importlib import import_module
 
-It now includes initial support for Spanish and Portuguese book names and abbreviations, for example:
+references = import_module("bible-io-references.references")
 
-- `Juan 3:16`
-- `João 3:16`
-- `Mat. 5:9`
-- `Apoc 21:4`
+print(references.VerseRef.from_str("Иоанна 3:16"))  # Russian
+print(references.VerseRef.from_str("יוחנן 3:16"))   # Hebrew
+print(references.VerseRef.from_str("Juan 3:16"))    # Spanish
+print(references.VerseRef.from_str("João 3:16"))    # Portuguese
+```
+
+Localized abbreviations are also supported, including forms like `Ин. 3:16`, `יוח 3:16`, `Mat. 5:9`, and `Apoc 21:4`.
+
+## Error handling
+
+Invalid references raise `ParseVerseRefError`:
+
+```python
+from importlib import import_module
+
+references = import_module("bible-io-references.references")
+
+try:
+    references.VerseRef.from_str("NotABook 3:16")
+except references.ParseVerseRefError as exc:
+    print(str(exc))  # invalid verse reference
+```
+
+## Core types
+
+- `BibleBookEnum`: canonical Bible books (including Protestant, Catholic deuterocanonical, and Eastern Orthodox additions in the enum)
+- `VerseRef`: single verse (`book`, `chapter`, `verse`)
+- `VerseRangeRef`: range with `start` and `end` `VerseRef`s
+- `ParseVerseRefError`: parse failure exception
