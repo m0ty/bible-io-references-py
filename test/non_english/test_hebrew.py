@@ -36,6 +36,20 @@ def test_parse_hebrew_reference(reference, expected):
                 (books.BibleBookEnum.John, 3, 17),
             ),
         ),
+        (
+            "יוחנן 3:16-4:1",
+            (
+                (books.BibleBookEnum.John, 3, 16),
+                (books.BibleBookEnum.John, 4, 1),
+            ),
+        ),
+        (
+            "יוחנן 3.16-4.1",
+            (
+                (books.BibleBookEnum.John, 3, 16),
+                (books.BibleBookEnum.John, 4, 1),
+            ),
+        ),
     ],
 )
 def test_parse_hebrew_verse_range(reference, expected):
