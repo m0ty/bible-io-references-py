@@ -86,3 +86,12 @@ def test_parse_all_books_with_colon_and_dot_separators(book):
 
     assert (colon_ref.book, colon_ref.chapter, colon_ref.verse) == (book, 1, 1)
     assert (dot_ref.book, dot_ref.chapter, dot_ref.verse) == (book, 1, 1)
+
+
+@pytest.mark.parametrize("book", list(books.BibleBookEnum))
+def test_parse_all_book_abbreviations_with_colon_and_dot_separators(book):
+    colon_ref = references.VerseRef.from_str(f"{book.as_str()} 1:1")
+    dot_ref = references.VerseRef.from_str(f"{book.as_str()} 1.1")
+
+    assert (colon_ref.book, colon_ref.chapter, colon_ref.verse) == (book, 1, 1)
+    assert (dot_ref.book, dot_ref.chapter, dot_ref.verse) == (book, 1, 1)
