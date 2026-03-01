@@ -20,10 +20,18 @@ Parse Bible verse references into structured Python objects.
   - English full names (for all enum books)
   - enum abbreviations (for all enum books)
   - localized names and abbreviations for:
-    - Russian (`ru`)
+    - Arabic (`ar`)
+    - Chinese (`zh`)
+    - French (`fr`)
+    - German (`de`)
     - Hebrew (`he`)
-    - Spanish (`es`)
+    - Hindi (`hi`)
+    - Indonesian (`id`)
+    - Korean (`ko`)
     - Portuguese (`pt`)
+    - Russian (`ru`)
+    - Spanish (`es`)
+    - Tagalog (`tl`)
 
 ## Installation
 
@@ -67,13 +75,15 @@ from importlib import import_module
 
 references = import_module("bible-io-references.references")
 
-print(references.VerseRef.from_str("Иоанна 3:16"))  # Russian
-print(references.VerseRef.from_str("יוחנן 3:16"))   # Hebrew
-print(references.VerseRef.from_str("Juan 3:16"))    # Spanish
-print(references.VerseRef.from_str("João 3:16"))    # Portuguese
+print(references.VerseRef.from_str("Иоанна 3:16"))   # Russian
+print(references.VerseRef.from_str("יוחנן 3:16"))    # Hebrew
+print(references.VerseRef.from_str("Juan 3:16"))     # Spanish
+print(references.VerseRef.from_str("João 3:16"))     # Portuguese
+print(references.VerseRef.from_str("요한복음 3:16"))  # Korean
+print(references.VerseRef.from_str("约翰福音 3:16"))   # Chinese
 ```
 
-Localized abbreviations are also supported, including forms like `Ин. 3:16`, `יוח 3:16`, `Mat. 5:9`, and `Apoc 21:4`.
+Localized abbreviations are also supported, including forms like `Ин. 3:16`, `יוח 3:16`, `Mat. 5:9`, `Apoc 21:4`, and `요 3:16`.
 
 ## Error handling
 
