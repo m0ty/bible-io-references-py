@@ -1,5 +1,4 @@
 from typing import Dict, Iterable
-
 from ..bible_book_enums import BibleBookEnum
 
 BOOK_NAMES: Dict[BibleBookEnum, Iterable[str]] = {
