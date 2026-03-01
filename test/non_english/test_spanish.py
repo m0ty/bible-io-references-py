@@ -60,21 +60,24 @@ def test_parse_spanish_verse_range(reference, expected):
     assert (ref.end.book, ref.end.chapter, ref.end.verse) == expected[1]
 
 
-@pytest.mark.parametrize(
-    "reference, expected_book",
-    [(f"{names[0]} 1:1", book) for book, names in spanish.BOOK_NAMES.items()],
-)
-def test_parse_spanish_book_names(reference, expected_book):
-    ref = references.VerseRef.from_str(reference)
+@pytest.mark.parametrize("expected_book", list(books.BibleBookEnum))
+def test_parse_spanish_book_names(expected_book):
+    names = spanish.BOOK_NAMES.get(expected_book)
+
+    assert names, f"Missing BOOK_NAMES entry for {expected_book.name}"
+
+    ref = references.VerseRef.from_str(f"{names[0]} 1:1")
 
     assert (ref.book, ref.chapter, ref.verse) == (expected_book, 1, 1)
 
 
-@pytest.mark.parametrize(
-    "reference, expected_book",
-    [(f"{abbr} 1:1", book) for book, abbreviations in spanish.BOOK_ABBREVIATIONS.items() for abbr in abbreviations],
-)
-def test_parse_spanish_book_abbreviations(reference, expected_book):
-    ref = references.VerseRef.from_str(reference)
+@pytest.mark.parametrize("expected_book", list(books.BibleBookEnum))
+def test_parse_spanish_book_abbreviations(expected_book):
+    abbreviations = spanish.BOOK_ABBREVIATIONS.get(expected_book)
 
-    assert (ref.book, ref.chapter, ref.verse) == (expected_book, 1, 1)
+    assert abbreviations, f"Missing BOOK_ABBREVIATIONS entry for {expected_book.name}"
+
+    for abbreviation in abbreviations:
+        ref = references.VerseRef.from_str(f"{abbreviation} 1:1")
+
+        assert (ref.book, ref.chapter, ref.verse) == (expected_book, 1, 1)
