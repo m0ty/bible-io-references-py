@@ -4,7 +4,7 @@ import pytest
 
 references = importlib.import_module("bible-io-references.references")
 books = importlib.import_module("bible-io-references.bible_book_enums")
-portuguese = importlib.import_module("bible-io-references.languages.pt")
+portuguese = importlib.import_module("bible-io-references.languages.portuguese")
 
 
 @pytest.mark.parametrize(
