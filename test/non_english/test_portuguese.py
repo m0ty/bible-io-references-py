@@ -4,6 +4,7 @@ import pytest
 
 references = importlib.import_module("bible-io-references.references")
 books = importlib.import_module("bible-io-references.bible_book_enums")
+portuguese = importlib.import_module("bible-io-references.languages.pt")
 
 
 @pytest.mark.parametrize(
@@ -57,3 +58,13 @@ def test_parse_portuguese_verse_range(reference, expected):
 
     assert (ref.start.book, ref.start.chapter, ref.start.verse) == expected[0]
     assert (ref.end.book, ref.end.chapter, ref.end.verse) == expected[1]
+
+
+@pytest.mark.parametrize(
+    "reference, expected_book",
+    [(f"{names[0]} 1:1", book) for book, names in portuguese.BOOK_NAMES.items()],
+)
+def test_parse_portuguese_book_names(reference, expected_book):
+    ref = references.VerseRef.from_str(reference)
+
+    assert (ref.book, ref.chapter, ref.verse) == (expected_book, 1, 1)
