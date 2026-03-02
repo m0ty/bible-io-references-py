@@ -85,6 +85,19 @@ print(references.VerseRef.from_str("约翰福音 3:16"))   # Chinese
 
 Localized abbreviations are also supported, including forms like `Ин. 3:16`, `יוח 3:16`, `Mat. 5:9`, `Apoc 21:4`, and `요 3:16`.
 
+To restrict parsing to a specific language (to avoid cross-language abbreviation collisions),
+pass a language enum. The default is `AUTO`, which searches all languages:
+
+```python
+from importlib import import_module
+
+references = import_module("bible-io-references.references")
+language_enums = import_module("bible-io-references.language_enums")
+
+lang = language_enums.BibleLanguageEnum.FRENCH
+print(references.VerseRef.from_str("So 1:1", language=lang))
+```
+
 ## Error handling
 
 Invalid references raise `ParseVerseRefError`:

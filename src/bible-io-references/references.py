@@ -2,6 +2,7 @@ import re
 from typing import Dict, Iterable
 
 from .bible_book_enums import BibleBookEnum
+from .language_enums import BibleLanguageEnum
 from .languages import BOOK_ABBREVIATIONS_BY_LANGUAGE, BOOK_NAMES_BY_LANGUAGE
 
 _BOOK_NAMES_BY_LANGUAGE = BOOK_NAMES_BY_LANGUAGE
@@ -27,20 +28,39 @@ _VERSE_RANGE_REF_PATTERN = re.compile(
 
 def _register_book_terms(
     table: Dict[str, BibleBookEnum],
+    source: Dict[BibleBookEnum, Iterable[str]],
+) -> None:
+    for book, terms in source.items():
+        for term in terms:
+            table[term.casefold()] = book
+
+
+def _register_book_terms_by_language(
+    table: Dict[str, BibleBookEnum],
     source: Dict[str, Dict[BibleBookEnum, Iterable[str]]],
 ) -> None:
     for books_for_language in source.values():
-        for book, terms in books_for_language.items():
-            for term in terms:
-                table[term.casefold()] = book
+        _register_book_terms(table, books_for_language)
 
 
 # Centralized lookup table used by parsing logic.
 _BOOK_NAME_TO_ENUM: Dict[str, BibleBookEnum] = {
     book.full_name.casefold(): book for book in BibleBookEnum
 }
-_register_book_terms(_BOOK_NAME_TO_ENUM, _BOOK_NAMES_BY_LANGUAGE)
-_register_book_terms(_BOOK_NAME_TO_ENUM, _BOOK_ABBREVIATIONS_BY_LANGUAGE)
+_register_book_terms_by_language(_BOOK_NAME_TO_ENUM, _BOOK_NAMES_BY_LANGUAGE)
+_register_book_terms_by_language(_BOOK_NAME_TO_ENUM, _BOOK_ABBREVIATIONS_BY_LANGUAGE)
+
+_LANGUAGE_CODES = set(_BOOK_NAMES_BY_LANGUAGE) | set(_BOOK_ABBREVIATIONS_BY_LANGUAGE)
+_BOOK_NAME_TO_ENUM_BY_LANGUAGE: Dict[str, Dict[str, BibleBookEnum]] = {}
+for code in _LANGUAGE_CODES:
+    table: Dict[str, BibleBookEnum] = {}
+    names = _BOOK_NAMES_BY_LANGUAGE.get(code)
+    if names is not None:
+        _register_book_terms(table, names)
+    abbreviations = _BOOK_ABBREVIATIONS_BY_LANGUAGE.get(code)
+    if abbreviations is not None:
+        _register_book_terms(table, abbreviations)
+    _BOOK_NAME_TO_ENUM_BY_LANGUAGE[code] = table
 
 
 class VerseRef:
@@ -53,8 +73,16 @@ class VerseRef:
         return f"{self.book.full_name} {self.chapter}:{self.verse}"
 
     @classmethod
-    def from_str(cls, ref: str) -> "VerseRef":
-        """Parse a verse reference string like ``John 3:16`` into a VerseRef."""
+    def from_str(
+        cls,
+        ref: str,
+        language: BibleLanguageEnum | str | None = BibleLanguageEnum.AUTO,
+    ) -> "VerseRef":
+        """Parse a verse reference string like ``John 3:16`` into a VerseRef.
+
+        If ``language`` is ``AUTO`` (default), the parser searches all languages.
+        Otherwise, it only matches terms for the specified language.
+        """
         if not isinstance(ref, str) or not ref:
             raise ParseVerseRefError()
 
@@ -71,33 +99,55 @@ class VerseRef:
         if chapter <= 0 or verse <= 0:
             raise ParseVerseRefError()
 
-        book = _parse_book_name(match.group("book"))
+        book = _parse_book_name(match.group("book"), _normalize_language(language))
         return cls(book_enum=book, chapter=chapter, verse=verse)
 
 
-def _parse_book_name(book_text: str) -> BibleBookEnum:
+def _normalize_language(language: BibleLanguageEnum | str | None) -> BibleLanguageEnum:
+    if language is None:
+        return BibleLanguageEnum.AUTO
+    if isinstance(language, BibleLanguageEnum):
+        return language
+    if isinstance(language, str):
+        return BibleLanguageEnum.from_str(language)
+    raise ValueError("language must be a BibleLanguageEnum or string")
+
+
+def _parse_book_name(book_text: str, language: BibleLanguageEnum) -> BibleBookEnum:
     normalized = " ".join(book_text.split()).casefold()
     if not normalized:
         raise ParseVerseRefError()
 
-    direct = _BOOK_NAME_TO_ENUM.get(normalized)
+    if language == BibleLanguageEnum.AUTO:
+        lookup = _BOOK_NAME_TO_ENUM
+        allow_enum_fallback = True
+    else:
+        lookup = _BOOK_NAME_TO_ENUM_BY_LANGUAGE.get(language.code)
+        allow_enum_fallback = False
+
+    if lookup is None:
+        raise ParseVerseRefError()
+
+    direct = lookup.get(normalized)
     if direct is not None:
         return direct
 
     normalized_without_period = normalized.replace(".", "")
-    without_period = _BOOK_NAME_TO_ENUM.get(normalized_without_period)
+    without_period = lookup.get(normalized_without_period)
     if without_period is not None:
         return without_period
 
     compact = normalized_without_period.replace(" ", "")
-    compact_match = _BOOK_NAME_TO_ENUM.get(compact)
+    compact_match = lookup.get(compact)
     if compact_match is not None:
         return compact_match
 
-    try:
-        return BibleBookEnum.from_str(compact)
-    except ValueError as e:
-        raise ParseVerseRefError() from e
+    if allow_enum_fallback:
+        try:
+            return BibleBookEnum.from_str(compact)
+        except ValueError as e:
+            raise ParseVerseRefError() from e
+    raise ParseVerseRefError()
 
 
 class VerseRangeRef:
@@ -123,8 +173,16 @@ class VerseRangeRef:
         )
 
     @classmethod
-    def from_str(cls, ref: str) -> "VerseRangeRef":
-        """Parse a verse range like ``John 3:16-17`` into a VerseRangeRef."""
+    def from_str(
+        cls,
+        ref: str,
+        language: BibleLanguageEnum | str | None = BibleLanguageEnum.AUTO,
+    ) -> "VerseRangeRef":
+        """Parse a verse range like ``John 3:16-17`` into a VerseRangeRef.
+
+        If ``language`` is ``AUTO`` (default), the parser searches all languages.
+        Otherwise, it only matches terms for the specified language.
+        """
         if not isinstance(ref, str) or not ref:
             raise ParseVerseRefError()
 
@@ -148,9 +206,14 @@ class VerseRangeRef:
         if min(start_chapter, start_verse, end_chapter, end_verse) <= 0:
             raise ParseVerseRefError()
 
-        start_book = _parse_book_name(match.group("start_book"))
+        parsed_language = _normalize_language(language)
+        start_book = _parse_book_name(match.group("start_book"), parsed_language)
         end_book_match = match.group("end_book")
-        end_book = _parse_book_name(end_book_match) if end_book_match else start_book
+        end_book = (
+            _parse_book_name(end_book_match, parsed_language)
+            if end_book_match
+            else start_book
+        )
 
         return cls(
             start=VerseRef(book_enum=start_book, chapter=start_chapter, verse=start_verse),

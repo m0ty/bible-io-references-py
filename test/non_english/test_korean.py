@@ -5,6 +5,8 @@ import pytest
 references = importlib.import_module("bible-io-references.references")
 books = importlib.import_module("bible-io-references.bible_book_enums")
 korean = importlib.import_module("bible-io-references.languages.korean")
+language_enums = importlib.import_module("bible-io-references.language_enums")
+LANGUAGE = language_enums.BibleLanguageEnum.KOREAN
 
 
 @pytest.mark.parametrize(
@@ -15,7 +17,7 @@ korean = importlib.import_module("bible-io-references.languages.korean")
     ],
 )
 def test_parse_korean_reference(reference, expected):
-    ref = references.VerseRef.from_str(reference)
+    ref = references.VerseRef.from_str(reference, language=LANGUAGE)
 
     assert (ref.book, ref.chapter, ref.verse) == expected
 
@@ -26,7 +28,7 @@ def test_parse_korean_book_names(expected_book):
 
     assert names, f"Missing BOOK_NAMES entry for {expected_book.name}"
 
-    ref = references.VerseRef.from_str(f"{names[0]} 1:1")
+    ref = references.VerseRef.from_str(f"{names[0]} 1:1", language=LANGUAGE)
 
     assert (ref.book, ref.chapter, ref.verse) == (expected_book, 1, 1)
 
@@ -38,6 +40,6 @@ def test_parse_korean_book_abbreviations(expected_book):
     assert abbreviations, f"Missing BOOK_ABBREVIATIONS entry for {expected_book.name}"
 
     for abbreviation in abbreviations:
-        ref = references.VerseRef.from_str(f"{abbreviation} 1:1")
+        ref = references.VerseRef.from_str(f"{abbreviation} 1:1", language=LANGUAGE)
 
         assert (ref.book, ref.chapter, ref.verse) == (expected_book, 1, 1)
