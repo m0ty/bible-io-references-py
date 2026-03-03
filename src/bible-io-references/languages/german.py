@@ -109,9 +109,6 @@ BOOK_NAMES: Dict[BibleBookEnum, Iterable[str]] = {
     BibleBookEnum.Psalm151: ("Psalm 151",),
 }
 
-from typing import Dict, Iterable
-from ..bible_book_enums import BibleBookEnum
-
 BOOK_ABBREVIATIONS: Dict[BibleBookEnum, Iterable[str]] = {
     # Pentateuch (German practice: Gen/Ex/Lev/Num/Dtn; also common 1Mo/2Mo… forms)
     BibleBookEnum.Genesis: ("Gen", "gen", "GEN", "1Mo", "1 Mo", "1.Mo", "1 Mose", "1. Mose"),

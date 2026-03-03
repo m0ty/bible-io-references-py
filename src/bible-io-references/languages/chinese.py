@@ -109,9 +109,6 @@ BOOK_NAMES: Dict[BibleBookEnum, Iterable[str]] = {
     BibleBookEnum.Psalm151: ("诗篇151", "詩篇151", "诗篇第151篇", "詩篇第151篇", "诗篇增补", "詩篇增補"),
 }
 
-from typing import Dict, Iterable
-from ..bible_book_enums import BibleBookEnum
-
 BOOK_ABBREVIATIONS: Dict[BibleBookEnum, Iterable[str]] = {
     # OT abbreviations
     BibleBookEnum.Genesis: ("创", "創"),

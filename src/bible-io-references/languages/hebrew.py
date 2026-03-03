@@ -109,9 +109,6 @@ BOOK_NAMES: Dict[BibleBookEnum, Iterable[str]] = {
     BibleBookEnum.Psalm151: ("תהילים קנא", "תהלים קנא", "מזמור קנא", "תהילים 151", "תהלים 151"),
 }
 
-from typing import Dict, Iterable
-from ..bible_book_enums import BibleBookEnum
-
 BOOK_ABBREVIATIONS: Dict[BibleBookEnum, Iterable[str]] = {
     # Tanakh – abbreviations from Hebrew reference lists (accept multiple punctuation variants)
     BibleBookEnum.Genesis: ("בר׳", "בר'", "בר"),

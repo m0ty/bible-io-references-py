@@ -1,8 +1,4 @@
 from typing import Dict, Iterable
-
-from ..bible_book_enums import BibleBookEnum
-
-from typing import Dict, Iterable
 from ..bible_book_enums import BibleBookEnum
 
 BOOK_NAMES: Dict[BibleBookEnum, Iterable[str]] = {
@@ -138,9 +134,6 @@ BOOK_NAMES: Dict[BibleBookEnum, Iterable[str]] = {
     BibleBookEnum.PrayerOfManasseh: ("Prière de Manassé", "Priere de Manasse", "Prière de Manassé", "Priere de Manasse"),
     BibleBookEnum.Psalm151: ("Psaume 151", "psaume 151"),
 }
-
-from typing import Dict, Iterable
-from ..bible_book_enums import BibleBookEnum
 
 BOOK_ABBREVIATIONS: Dict[BibleBookEnum, Iterable[str]] = {
     # Pentateuch
