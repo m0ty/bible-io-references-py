@@ -15,6 +15,18 @@ from . import (
     spanish,
     tagalog,
 )
+#
+# TODO - add:
+# Bengali
+# Japanese
+# Italian
+# Swahili
+# Vietnamese
+# Polish
+# Thai
+# Urdu
+# Tamil
+# Greek
 
 BOOK_NAMES_BY_LANGUAGE: Dict[str, Dict[BibleBookEnum, Iterable[str]]] = {
     "ru": russian.BOOK_NAMES,
