@@ -182,12 +182,12 @@ BOOK_ABBREVIATIONS: Dict[BibleBookEnum, Iterable[str]] = {
     BibleBookEnum.FirstJohn: ("1jn", "1Jn", "1JO"),
     BibleBookEnum.SecondJohn: ("2jn", "2Jn", "2JO"),
     BibleBookEnum.ThirdJohn: ("3jn", "3Jn", "3JO"),
-    BibleBookEnum.Jude: ("jud", "Jude", "JUD"),
-    BibleBookEnum.Revelation: ("rev", "Ap", "APO"),
+    BibleBookEnum.Jude: ("jd", "Jude"),
+    BibleBookEnum.Revelation: ("rev", "Ap", "APO", "Pah"),
 
     # Deuterocanonical / Apocrypha
     BibleBookEnum.Tobit: ("tb", "Tob", "TOB"),
-    BibleBookEnum.Judith: ("jdt", "Jud", "JDT"),
+    BibleBookEnum.Judith: ("jdt", "JDT"),
     BibleBookEnum.Wisdom: ("wis", "Sab", "SAB"),
     BibleBookEnum.Sirach: ("sir", "SIR", "Eclo"),
     BibleBookEnum.Baruch: ("bar", "Bar", "BAR"),

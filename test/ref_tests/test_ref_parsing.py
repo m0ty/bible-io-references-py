@@ -20,6 +20,28 @@ def test_parse_reference(reference, expected):
     assert (ref.book, ref.chapter, ref.verse) == expected
 
 
+@pytest.mark.parametrize(
+    "reference, expected_book",
+    [
+        ("jud 1:1", books.BibleBookEnum.Judges),
+        ("so 1:1", books.BibleBookEnum.SongOfSolomon),
+        ("jn 1:1", books.BibleBookEnum.Jonah),
+    ],
+)
+def test_auto_language_prefers_english_abbreviations_on_collisions(
+    reference, expected_book
+):
+    ref = references.VerseRef.from_str(reference)
+
+    assert ref.book == expected_book
+
+
+def test_auto_language_falls_back_to_non_english_terms():
+    ref = references.VerseRef.from_str("Juan 1:1")
+
+    assert ref.book == books.BibleBookEnum.John
+
+
 @pytest.mark.parametrize("reference", ["NotABook 3:16"])
 def test_parse_invalid_reference_raises_parse_error(reference):
     with pytest.raises(references.ParseVerseRefError):

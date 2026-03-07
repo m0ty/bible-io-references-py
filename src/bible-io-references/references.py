@@ -43,10 +43,33 @@ def _register_book_terms_by_language(
         _register_book_terms(table, books_for_language)
 
 
-# Centralized lookup table used by parsing logic.
-_BOOK_NAME_TO_ENUM: Dict[str, BibleBookEnum] = {
+def _lookup_book_term(
+    lookup: Dict[str, BibleBookEnum],
+    normalized: str,
+) -> BibleBookEnum | None:
+    direct = lookup.get(normalized)
+    if direct is not None:
+        return direct
+
+    normalized_without_period = normalized.replace(".", "")
+    without_period = lookup.get(normalized_without_period)
+    if without_period is not None:
+        return without_period
+
+    compact = normalized_without_period.replace(" ", "")
+    return lookup.get(compact)
+
+
+# Canonical English names and enum abbreviations are the primary AUTO match target.
+_ENGLISH_BOOK_NAME_TO_ENUM: Dict[str, BibleBookEnum] = {
     book.full_name.casefold(): book for book in BibleBookEnum
 }
+for _book in BibleBookEnum:
+    _ENGLISH_BOOK_NAME_TO_ENUM[_book.as_str().casefold()] = _book
+
+
+# Centralized lookup table used by parsing logic.
+_BOOK_NAME_TO_ENUM: Dict[str, BibleBookEnum] = dict(_ENGLISH_BOOK_NAME_TO_ENUM)
 _register_book_terms_by_language(_BOOK_NAME_TO_ENUM, _BOOK_NAMES_BY_LANGUAGE)
 _register_book_terms_by_language(_BOOK_NAME_TO_ENUM, _BOOK_ABBREVIATIONS_BY_LANGUAGE)
 
@@ -80,7 +103,8 @@ class VerseRef:
     ) -> "VerseRef":
         """Parse a verse reference string like ``John 3:16`` into a VerseRef.
 
-        If ``language`` is ``AUTO`` (default), the parser searches all languages.
+        If ``language`` is ``AUTO`` (default), the parser checks canonical English
+        names/abbreviations first, then searches all localized languages.
         Otherwise, it only matches terms for the specified language.
         """
         if not isinstance(ref, str) or not ref:
@@ -118,31 +142,25 @@ def _parse_book_name(book_text: str, language: BibleLanguageEnum) -> BibleBookEn
     if not normalized:
         raise ParseVerseRefError()
 
+    normalized_without_period = normalized.replace(".", "")
+    compact = normalized_without_period.replace(" ", "")
+
     if language == BibleLanguageEnum.AUTO:
+        english = _lookup_book_term(_ENGLISH_BOOK_NAME_TO_ENUM, normalized)
+        if english is not None:
+            return english
         lookup = _BOOK_NAME_TO_ENUM
-        allow_enum_fallback = True
     else:
         lookup = _BOOK_NAME_TO_ENUM_BY_LANGUAGE.get(language.code)
-        allow_enum_fallback = False
 
     if lookup is None:
         raise ParseVerseRefError()
 
-    direct = lookup.get(normalized)
-    if direct is not None:
-        return direct
+    matched = _lookup_book_term(lookup, normalized)
+    if matched is not None:
+        return matched
 
-    normalized_without_period = normalized.replace(".", "")
-    without_period = lookup.get(normalized_without_period)
-    if without_period is not None:
-        return without_period
-
-    compact = normalized_without_period.replace(" ", "")
-    compact_match = lookup.get(compact)
-    if compact_match is not None:
-        return compact_match
-
-    if allow_enum_fallback:
+    if language == BibleLanguageEnum.AUTO:
         try:
             return BibleBookEnum.from_str(compact)
         except ValueError as e:
@@ -180,7 +198,8 @@ class VerseRangeRef:
     ) -> "VerseRangeRef":
         """Parse a verse range like ``John 3:16-17`` into a VerseRangeRef.
 
-        If ``language`` is ``AUTO`` (default), the parser searches all languages.
+        If ``language`` is ``AUTO`` (default), the parser checks canonical English
+        names/abbreviations first, then searches all localized languages.
         Otherwise, it only matches terms for the specified language.
         """
         if not isinstance(ref, str) or not ref:
