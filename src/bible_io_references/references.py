@@ -1,5 +1,6 @@
 import re
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Dict, Iterable, Self
 
 from .bible_book_enums import BibleBookEnum
@@ -10,8 +11,25 @@ from .languages import BOOK_ABBREVIATIONS_BY_LANGUAGE, BOOK_NAMES_BY_LANGUAGE
 class ParseVerseRefError(ValueError):
     """Raised when a verse reference string cannot be parsed."""
 
+    def __init__(
+        self,
+        *,
+        code: str = "invalid_reference",
+        details: str | None = None,
+    ) -> None:
+        self.code = code
+        self.details = details
+        super().__init__("invalid verse reference")
+
     def __str__(self) -> str:
         return "invalid verse reference"
+
+    def to_dict(self) -> Dict[str, str]:
+        """Return machine-readable diagnostics for callers."""
+        data = {"code": self.code}
+        if self.details is not None:
+            data["details"] = self.details
+        return data
 
 
 _VERSE_REF_PATTERN = re.compile(
@@ -24,6 +42,7 @@ _VERSE_RANGE_REF_PATTERN = re.compile(
     r"(?P<end_verse>\d+)\s*$"
 )
 
+
 class _BookTermLookup:
     """Resolve localized book names/abbreviations into ``BibleBookEnum`` values.
 
@@ -32,6 +51,10 @@ class _BookTermLookup:
         _all_languages (dict[str, BibleBookEnum]): Terms merged across languages.
         _by_language (dict[str, dict[str, BibleBookEnum]]): Terms by language code.
     """
+
+    AUTO_LANGUAGE_PRECEDENCE: tuple[str, ...] = tuple(
+        language.code for language in BibleLanguageEnum if language != BibleLanguageEnum.AUTO
+    )
 
     def __init__(
         self,
@@ -44,16 +67,37 @@ class _BookTermLookup:
             names_by_language: Canonical names keyed by language and book.
             abbreviations_by_language: Abbreviations keyed by language and book.
         """
-        
+
         self._english = self._build_english_lookup()
         self._all_languages: Dict[str, BibleBookEnum] = dict(self._english)
-        self._register_terms_by_language(self._all_languages, names_by_language)
-        self._register_terms_by_language(self._all_languages, abbreviations_by_language)
+        self._auto_collisions: Dict[str, set[BibleBookEnum]] = {}
+
+        self._register_terms_by_language(
+            self._all_languages,
+            names_by_language,
+            prefer_existing=True,
+            collisions=self._auto_collisions,
+        )
+        self._register_terms_by_language(
+            self._all_languages,
+            abbreviations_by_language,
+            prefer_existing=True,
+            collisions=self._auto_collisions,
+        )
 
         self._by_language: Dict[str, Dict[str, BibleBookEnum]] = {}
-        language_codes = set(names_by_language) | set(abbreviations_by_language)
-        
-        for code in language_codes:
+        language_codes = tuple(
+            code
+            for code in self.AUTO_LANGUAGE_PRECEDENCE
+            if code in names_by_language or code in abbreviations_by_language
+        )
+        unordered_codes = tuple(
+            code
+            for code in (set(names_by_language) | set(abbreviations_by_language))
+            if code not in language_codes
+        )
+
+        for code in (*language_codes, *unordered_codes):
             table: Dict[str, BibleBookEnum] = {}
             names = names_by_language.get(code)
             if names is not None:
@@ -62,6 +106,14 @@ class _BookTermLookup:
             if abbreviations is not None:
                 self._register_terms(table, abbreviations)
             self._by_language[code] = table
+
+    @property
+    def auto_collisions(self) -> Dict[str, tuple[BibleBookEnum, ...]]:
+        """Return ambiguous AUTO-mode terms mapped to all colliding books."""
+        return {
+            term: tuple(sorted(books, key=lambda book: book.name))
+            for term, books in self._auto_collisions.items()
+        }
 
     @staticmethod
     def normalize_language(
@@ -84,7 +136,7 @@ class _BookTermLookup:
             return language
         if isinstance(language, str):
             return BibleLanguageEnum.from_str(language)
-        raise ValueError("language must be a BibleLanguageEnum or string")
+        raise ValueError("language must be a BibleLanguageEnum, string, or None")
 
     def parse_book_name(self, book_text: str, language: BibleLanguageEnum) -> BibleBookEnum:
         """Parse a raw book token using the selected language strategy.
@@ -101,19 +153,29 @@ class _BookTermLookup:
         """
         normalized = " ".join(book_text.split()).casefold()
         if not normalized:
-            raise ParseVerseRefError()
+            raise ParseVerseRefError(
+                code="empty_book_token",
+                details="book token is empty after normalization",
+            )
 
         compact = normalized.replace(".", "").replace(" ", "")
+        lookup: Dict[str, BibleBookEnum] | None
+
         if language == BibleLanguageEnum.AUTO:
             english_match = self._lookup_term(self._english, normalized)
+
             if english_match is not None:
                 return english_match
+
             lookup = self._all_languages
         else:
             lookup = self._by_language.get(language.code)
 
         if lookup is None:
-            raise ParseVerseRefError()
+            raise ParseVerseRefError(
+                code="unsupported_language",
+                details=f"unsupported language code: {language.code}",
+            )
 
         matched = self._lookup_term(lookup, normalized)
         if matched is not None:
@@ -123,15 +185,22 @@ class _BookTermLookup:
             try:
                 return BibleBookEnum.from_str(compact)
             except ValueError as e:
-                raise ParseVerseRefError() from e
-        raise ParseVerseRefError()
+                raise ParseVerseRefError(
+                    code="unknown_book",
+                    details=f"book token {book_text!r} did not match known books",
+                ) from e
+
+        raise ParseVerseRefError(
+            code="unknown_book",
+            details=f"book token {book_text!r} is unknown for language {language.code}",
+        )
 
     @staticmethod
     def _build_english_lookup() -> Dict[str, BibleBookEnum]:
         """Build a lookup table containing canonical and short English book names.
 
         Returns:
-            dict[str, BibleBookEnum]: Casefolded English lookup table.
+            dict[str, BibleBookEnum]: Case-folded English lookup table.
         """
         lookup = {book.full_name.casefold(): book for book in BibleBookEnum}
         for book in BibleBookEnum:
@@ -142,31 +211,58 @@ class _BookTermLookup:
     def _register_terms(
         table: Dict[str, BibleBookEnum],
         source: Dict[BibleBookEnum, Iterable[str]],
+        *,
+        prefer_existing: bool = False,
+        collisions: Dict[str, set[BibleBookEnum]] | None = None,
     ) -> None:
         """Insert all terms from ``source`` into ``table`` as case-insensitive keys.
 
         Args:
             table: Destination lookup table to mutate.
             source: Book-term mappings to register.
+            prefer_existing: Keep existing term mapping if already present.
+            collisions: Optional destination map for ambiguous term bookkeeping.
         """
         for book, terms in source.items():
             for term in terms:
-                table[term.casefold()] = book
+                normalized = term.casefold()
+                existing = table.get(normalized)
+                if existing is not None and existing != book and collisions is not None:
+                    collisions.setdefault(normalized, {existing}).add(book)
+                if existing is None or not prefer_existing:
+                    table[normalized] = book
 
     @classmethod
     def _register_terms_by_language(
         cls,
         table: Dict[str, BibleBookEnum],
         source: Dict[str, Dict[BibleBookEnum, Iterable[str]]],
+        *,
+        prefer_existing: bool = False,
+        collisions: Dict[str, set[BibleBookEnum]] | None = None,
     ) -> None:
         """Merge all language term maps into a single lookup table.
 
         Args:
             table: Destination lookup table to mutate.
             source: Per-language term tables.
+            prefer_existing: Keep existing term mapping if already present.
+            collisions: Optional destination map for ambiguous term bookkeeping.
         """
-        for books_for_language in source.values():
-            cls._register_terms(table, books_for_language)
+        ordered_language_codes = tuple(
+            code for code in cls.AUTO_LANGUAGE_PRECEDENCE if code in source
+        )
+        unordered_language_codes = tuple(
+            code for code in source if code not in ordered_language_codes
+        )
+        for language_code in (*ordered_language_codes, *unordered_language_codes):
+            books_for_language = source[language_code]
+            cls._register_terms(
+                table,
+                books_for_language,
+                prefer_existing=prefer_existing,
+                collisions=collisions,
+            )
 
     @staticmethod
     def _lookup_term(
@@ -194,10 +290,7 @@ class _BookTermLookup:
         return lookup.get(without_periods.replace(" ", ""))
 
 
-
-
-
-class _BaseReference(ABC):
+class BaseReference(ABC):
     """Shared parsing utilities for concrete verse reference value objects.
 
     Class Attributes:
@@ -207,11 +300,10 @@ class _BaseReference(ABC):
 
     _PATTERN: re.Pattern[str]
 
-    _BOOK_LOOKUP = _BookTermLookup(
+    BOOK_LOOKUP = _BookTermLookup(
         names_by_language=BOOK_NAMES_BY_LANGUAGE,
         abbreviations_by_language=BOOK_ABBREVIATIONS_BY_LANGUAGE,
     )
-
 
     @classmethod
     def from_str(
@@ -232,14 +324,25 @@ class _BaseReference(ABC):
             ParseVerseRefError: If the input is empty or invalid.
             ValueError: If ``language`` cannot be normalized.
         """
-        if not isinstance(ref, str) or not ref:
-            raise ParseVerseRefError()
+        if not isinstance(ref, str):
+            raise ParseVerseRefError(
+                code="invalid_reference_type",
+                details=f"reference must be a string, got {type(ref).__name__}",
+            )
+        if not ref:
+            raise ParseVerseRefError(
+                code="empty_reference",
+                details="reference string is empty",
+            )
 
         match = cls._PATTERN.match(ref)
         if match is None:
-            raise ParseVerseRefError()
+            raise ParseVerseRefError(
+                code="pattern_mismatch",
+                details=f"reference {ref!r} does not match expected format",
+            )
 
-        parsed_language = cls._BOOK_LOOKUP.normalize_language(language)
+        parsed_language = cls.BOOK_LOOKUP.normalize_language(language)
         return cls._from_match(match, parsed_language)
 
     @staticmethod
@@ -253,18 +356,27 @@ class _BaseReference(ABC):
             int: Parsed positive integer.
 
         Raises:
-            ParseVerseRefError: If value is missing, non-numeric, or non-positive.
+            ParseVerseRefError: If a value is missing, non-numeric, or non-positive.
         """
         if value is None:
-            raise ParseVerseRefError()
+            raise ParseVerseRefError(
+                code="missing_numeric_token",
+                details="missing numeric component in parsed reference",
+            )
 
         try:
             parsed = int(value)
         except ValueError as e:
-            raise ParseVerseRefError() from e
+            raise ParseVerseRefError(
+                code="invalid_numeric_token",
+                details=f"numeric token {value!r} is not an integer",
+            ) from e
 
         if parsed <= 0:
-            raise ParseVerseRefError()
+            raise ParseVerseRefError(
+                code="non_positive_numeric_token",
+                details=f"numeric token {value!r} must be greater than zero",
+            )
         return parsed
 
     @classmethod
@@ -286,7 +398,8 @@ class _BaseReference(ABC):
         raise NotImplementedError
 
 
-class VerseRef(_BaseReference):
+@dataclass(frozen=True, slots=True)
+class VerseRef(BaseReference):
     """A single verse reference, e.g. ``John 3:16``.
 
     Attributes:
@@ -295,19 +408,11 @@ class VerseRef(_BaseReference):
         verse (int): Parsed verse number.
     """
 
+    book: BibleBookEnum
+    chapter: int
+    verse: int
+
     _PATTERN = _VERSE_REF_PATTERN
-
-    def __init__(self, book_enum: BibleBookEnum, chapter: int, verse: int):
-        """Create a single-verse reference from parsed components.
-
-        Args:
-            book_enum: Parsed book enum.
-            chapter: Chapter number.
-            verse: Verse number.
-        """
-        self.book = book_enum
-        self.chapter = chapter
-        self.verse = verse
 
     def __str__(self) -> str:
         """Serialize the verse reference in canonical ``Book C:V`` format.
@@ -333,11 +438,12 @@ class VerseRef(_BaseReference):
         """
         chapter = cls._parse_positive_int(match.group("chapter"))
         verse = cls._parse_positive_int(match.group("verse"))
-        book = cls._BOOK_LOOKUP.parse_book_name(match.group("book"), language)
-        return cls(book_enum=book, chapter=chapter, verse=verse)
+        book = cls.BOOK_LOOKUP.parse_book_name(match.group("book"), language)
+        return cls(book=book, chapter=chapter, verse=verse)
 
 
-class VerseRangeRef(_BaseReference):
+@dataclass(frozen=True, slots=True)
+class VerseRangeRef(BaseReference):
     """A verse range reference, e.g. ``John 3:16-18`` or ``John 3:16-4:2``.
 
     Attributes:
@@ -345,17 +451,10 @@ class VerseRangeRef(_BaseReference):
         end (VerseRef): End verse of the range.
     """
 
+    start: VerseRef
+    end: VerseRef
+
     _PATTERN = _VERSE_RANGE_REF_PATTERN
-
-    def __init__(self, start: VerseRef, end: VerseRef):
-        """Create a range reference with explicit start and end verse refs.
-
-        Args:
-            start: Start verse reference.
-            end: End verse reference.
-        """
-        self.start = start
-        self.end = end
 
     def __str__(self) -> str:
         """Serialize the range using the shortest unambiguous textual form.
@@ -408,15 +507,29 @@ class VerseRangeRef(_BaseReference):
             else start_chapter
         )
 
-        start_book = cls._BOOK_LOOKUP.parse_book_name(match.group("start_book"), language)
+        start_book = cls.BOOK_LOOKUP.parse_book_name(match.group("start_book"), language)
         end_book_match = match.group("end_book")
         end_book = (
-            cls._BOOK_LOOKUP.parse_book_name(end_book_match, language)
+            cls.BOOK_LOOKUP.parse_book_name(end_book_match, language)
             if end_book_match
             else start_book
         )
 
+        if end_book == start_book and (end_chapter, end_verse) <= (
+            start_chapter,
+            start_verse,
+        ):
+            raise ParseVerseRefError(
+                code="same_book_range_not_ascending",
+                details="end reference must come after start reference for same-book ranges",
+            )
+
         return cls(
-            start=VerseRef(book_enum=start_book, chapter=start_chapter, verse=start_verse),
-            end=VerseRef(book_enum=end_book, chapter=end_chapter, verse=end_verse),
+            start=VerseRef(book=start_book, chapter=start_chapter, verse=start_verse),
+            end=VerseRef(book=end_book, chapter=end_chapter, verse=end_verse),
         )
+
+
+AUTO_LANGUAGE_PRECEDENCE: tuple[str, ...] = _BookTermLookup.AUTO_LANGUAGE_PRECEDENCE
+AUTO_LANGUAGE_COLLISIONS: Dict[str, tuple[BibleBookEnum, ...]] = BaseReference.BOOK_LOOKUP.auto_collisions
+

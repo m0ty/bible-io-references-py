@@ -1,6 +1,15 @@
+from dataclasses import FrozenInstanceError
+
 import pytest
-from src.bible_io_references.references import VerseRef, VerseRangeRef, ParseVerseRefError
+
 from src.bible_io_references.bible_book_enums import BibleBookEnum
+from src.bible_io_references.references import (
+    AUTO_LANGUAGE_COLLISIONS,
+    AUTO_LANGUAGE_PRECEDENCE,
+    ParseVerseRefError,
+    VerseRangeRef,
+    VerseRef,
+)
 
 
 @pytest.mark.parametrize(
@@ -39,10 +48,44 @@ def test_auto_language_falls_back_to_non_english_terms():
     assert ref.book == BibleBookEnum.John
 
 
+def test_auto_language_collision_metadata_exposes_ambiguous_terms():
+    assert AUTO_LANGUAGE_PRECEDENCE == (
+        "ar",
+        "zh",
+        "fr",
+        "de",
+        "he",
+        "hi",
+        "id",
+        "ko",
+        "pt",
+        "ru",
+        "es",
+        "tl",
+    )
+
+    assert "jn" in AUTO_LANGUAGE_COLLISIONS
+    assert "jud" in AUTO_LANGUAGE_COLLISIONS
+
+    jn_books = {book.name for book in AUTO_LANGUAGE_COLLISIONS["jn"]}
+    assert jn_books == {"John", "Jonah"}
+
+
 @pytest.mark.parametrize("reference", ["NotABook 3:16"])
 def test_parse_invalid_reference_raises_parse_error(reference):
     with pytest.raises(ParseVerseRefError):
         VerseRef.from_str(reference)
+
+
+def test_parse_error_includes_machine_readable_diagnostics():
+    with pytest.raises(ParseVerseRefError) as exc_info:
+        VerseRef.from_str("NotABook 3:16")
+
+    exc = exc_info.value
+    assert str(exc) == "invalid verse reference"
+    assert exc.code == "unknown_book"
+    assert exc.details is not None
+    assert exc.to_dict()["code"] == "unknown_book"
 
 
 @pytest.mark.parametrize(
@@ -56,7 +99,7 @@ def test_parse_invalid_reference_raises_parse_error(reference):
             ),
         ),
         (
-            "John 3:16–17",
+            "John 3:16\u201317",
             (
                 (BibleBookEnum.John, 3, 16),
                 (BibleBookEnum.John, 3, 17),
@@ -96,6 +139,25 @@ def test_parse_verse_range(reference, expected):
 def test_parse_invalid_verse_range_raises_parse_error(reference):
     with pytest.raises(ParseVerseRefError):
         VerseRangeRef.from_str(reference)
+
+
+@pytest.mark.parametrize("reference", ["John 3:17-16", "John 3:16-3:16", "John 3:16-John 3:16"])
+def test_same_book_range_requires_end_after_start(reference):
+    with pytest.raises(ParseVerseRefError) as exc_info:
+        VerseRangeRef.from_str(reference)
+
+    assert exc_info.value.code == "same_book_range_not_ascending"
+
+
+def test_references_are_immutable_value_objects():
+    ref = VerseRef.from_str("John 3:16")
+    rng = VerseRangeRef.from_str("John 3:16-17")
+
+    with pytest.raises(FrozenInstanceError):
+        ref.chapter = 4
+
+    with pytest.raises(FrozenInstanceError):
+        rng.end = ref
 
 
 @pytest.mark.parametrize("book", list(BibleBookEnum))

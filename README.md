@@ -4,17 +4,16 @@ Parse Bible verse references into structured Python objects.
 
 ## What this package supports
 
-- Parsing a **single verse reference** into a `VerseRef`:
+- Parsing a single verse reference into a `VerseRef`:
   - `John 3:16`
   - `jo 3:16` (enum abbreviation)
-- Parsing a **verse range** into a `VerseRangeRef`:
+- Parsing a verse range into a `VerseRangeRef`:
   - `John 3:16-17`
-  - `John 3:16–17` (en dash)
   - `John 3:16-4:1` (same book, different chapter)
   - `John 3:16-Acts 1:2` (cross-book range)
 - Flexible separators and spacing:
   - chapter/verse separator can be `:` or `.`
-  - range separator can be `-`, `–`, or `—`
+  - range separator can be hyphen, en dash, or em dash
   - extra surrounding whitespace is tolerated
 - Book name matching from:
   - English full names (for all enum books)
@@ -44,11 +43,9 @@ pip install bible-io-references
 ### Parse a single verse
 
 ```python
-from importlib import import_module
+from bible_io_references import VerseRef
 
-references = import_module("bible-io-references.references")
-
-ref = references.VerseRef.from_str("John 3:16")
+ref = VerseRef.from_str("John 3:16")
 print(ref.book.full_name)  # John
 print(ref.chapter)         # 3
 print(ref.verse)           # 16
@@ -58,11 +55,9 @@ print(str(ref))            # John 3:16
 ### Parse a verse range
 
 ```python
-from importlib import import_module
+from bible_io_references import VerseRangeRef
 
-references = import_module("bible-io-references.references")
-
-rng = references.VerseRangeRef.from_str("John 3:16-4:1")
+rng = VerseRangeRef.from_str("John 3:16-4:1")
 print(rng.start.book.full_name, rng.start.chapter, rng.start.verse)  # John 3 16
 print(rng.end.book.full_name, rng.end.chapter, rng.end.verse)        # John 4 1
 print(str(rng))                                                       # John 3:16-4:1
@@ -71,46 +66,42 @@ print(str(rng))                                                       # John 3:1
 ### Parse localized references
 
 ```python
-from importlib import import_module
+from bible_io_references import VerseRef
+from bible_io_references.language_enums import BibleLanguageEnum
 
-references = import_module("bible-io-references.references")
-
-print(references.VerseRef.from_str("Иоанна 3:16"))   # Russian
-print(references.VerseRef.from_str("יוחנן 3:16"))    # Hebrew
-print(references.VerseRef.from_str("Juan 3:16"))     # Spanish
-print(references.VerseRef.from_str("João 3:16"))     # Portuguese
-print(references.VerseRef.from_str("요한복음 3:16"))  # Korean
-print(references.VerseRef.from_str("约翰福音 3:16"))   # Chinese
+print(VerseRef.from_str("Juan 3:16"))
+print(VerseRef.from_str("Mat. 5:9", language=BibleLanguageEnum.SPANISH))
 ```
-
-Localized abbreviations are also supported, including forms like `Ин. 3:16`, `יוח 3:16`, `Mat. 5:9`, `Apoc 21:4`, and `요 3:16`.
 
 To restrict parsing to a specific language (to avoid cross-language abbreviation collisions),
-pass a language enum. The default is `AUTO`, which searches all languages:
+pass a language enum. The default is `AUTO`, which searches all supported languages.
+
+### AUTO-mode precedence and collision diagnostics
 
 ```python
-from importlib import import_module
+from bible_io_references.references import AUTO_LANGUAGE_PRECEDENCE, AUTO_LANGUAGE_COLLISIONS
 
-references = import_module("bible-io-references.references")
-language_enums = import_module("bible-io-references.language_enums")
-
-lang = language_enums.BibleLanguageEnum.FRENCH
-print(references.VerseRef.from_str("So 1:1", language=lang))
+print(AUTO_LANGUAGE_PRECEDENCE)
+print(AUTO_LANGUAGE_COLLISIONS.get("jn"))
 ```
+
+In `AUTO` mode, English terms are checked first. Localized terms are then resolved using
+`AUTO_LANGUAGE_PRECEDENCE` order.
 
 ## Error handling
 
-Invalid references raise `ParseVerseRefError`:
+Invalid references raise `ParseVerseRefError`.
 
 ```python
-from importlib import import_module
-
-references = import_module("bible-io-references.references")
+from bible_io_references import ParseVerseRefError, VerseRef
 
 try:
-    references.VerseRef.from_str("NotABook 3:16")
-except references.ParseVerseRefError as exc:
-    print(str(exc))  # invalid verse reference
+    VerseRef.from_str("NotABook 3:16")
+except ParseVerseRefError as exc:
+    print(str(exc))      # invalid verse reference
+    print(exc.code)      # machine-readable reason code
+    print(exc.details)   # optional detail text
+    print(exc.to_dict()) # {'code': '...', 'details': '...'}
 ```
 
 ## Core types
@@ -118,4 +109,4 @@ except references.ParseVerseRefError as exc:
 - `BibleBookEnum`: canonical Bible books (including Protestant, Catholic deuterocanonical, and Eastern Orthodox additions in the enum)
 - `VerseRef`: single verse (`book`, `chapter`, `verse`)
 - `VerseRangeRef`: range with `start` and `end` `VerseRef`s
-- `ParseVerseRefError`: parse failure exception
+- `ParseVerseRefError`: parse failure exception with structured diagnostics (`code`, `details`)
