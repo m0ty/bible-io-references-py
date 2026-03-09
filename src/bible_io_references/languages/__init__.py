@@ -15,7 +15,16 @@ from . import (
     spanish,
     tagalog,
 )
-#
+from .quality import (
+    DuplicateLanguageTermIssue,
+    EmptyLanguageTermIssue,
+    LanguageTermAuditReport,
+    LanguageTermCollisionIssue,
+    MissingLanguageBookEntriesIssue,
+    WhitespaceLanguageTermIssue,
+    audit_language_terms,
+)
+
 # TODO - add:
 # Bengali
 # Japanese
@@ -57,3 +66,15 @@ BOOK_ABBREVIATIONS_BY_LANGUAGE: Dict[str, Dict[BibleBookEnum, Iterable[str]]] = 
     "ar": arabic.BOOK_ABBREVIATIONS,
     "hi": hindi.BOOK_ABBREVIATIONS,
 }
+
+__all__ = [
+    "BOOK_NAMES_BY_LANGUAGE",
+    "BOOK_ABBREVIATIONS_BY_LANGUAGE",
+    "DuplicateLanguageTermIssue",
+    "EmptyLanguageTermIssue",
+    "LanguageTermAuditReport",
+    "LanguageTermCollisionIssue",
+    "MissingLanguageBookEntriesIssue",
+    "WhitespaceLanguageTermIssue",
+    "audit_language_terms",
+]

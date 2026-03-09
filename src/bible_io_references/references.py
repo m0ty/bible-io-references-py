@@ -533,3 +533,33 @@ class VerseRangeRef(BaseReference):
 AUTO_LANGUAGE_PRECEDENCE: tuple[str, ...] = _BookTermLookup.AUTO_LANGUAGE_PRECEDENCE
 AUTO_LANGUAGE_COLLISIONS: Dict[str, tuple[BibleBookEnum, ...]] = BaseReference.BOOK_LOOKUP.auto_collisions
 
+
+Reference = VerseRef | VerseRangeRef
+
+
+def parse_reference(
+    ref: str,
+    language: BibleLanguageEnum | str | None = BibleLanguageEnum.AUTO,
+) -> Reference:
+    """Parse ``ref`` into either a ``VerseRef`` or ``VerseRangeRef``.
+
+    The function first attempts single-verse parsing. If the input does not
+    match the single-verse shape, it falls back to range parsing.
+
+    Args:
+        ref: Bible reference text to parse.
+        language: Language enum/code/``None`` controlling book parsing.
+
+    Returns:
+        Reference: Parsed ``VerseRef`` or ``VerseRangeRef``.
+
+    Raises:
+        ParseVerseRefError: If both parsing strategies fail.
+        ValueError: If ``language`` cannot be normalized.
+    """
+    try:
+        return VerseRef.from_str(ref, language=language)
+    except ParseVerseRefError as verse_error:
+        if verse_error.code != "pattern_mismatch":
+            raise
+    return VerseRangeRef.from_str(ref, language=language)
