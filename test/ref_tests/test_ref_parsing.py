@@ -1,6 +1,6 @@
 import pytest
-from bible_io_references.references import VerseRef, VerseRangeRef, ParseVerseRefError
-from bible_io_references.bible_book_enums import BibleBookEnum
+from src.bible_io_references.references import VerseRef, VerseRangeRef, ParseVerseRefError
+from src.bible_io_references.bible_book_enums import BibleBookEnum
 
 
 @pytest.mark.parametrize(

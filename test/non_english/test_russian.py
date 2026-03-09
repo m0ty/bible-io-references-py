@@ -1,8 +1,8 @@
 import pytest
-from bible_io_references.references import VerseRef, VerseRangeRef
-from bible_io_references.language_enums import BibleLanguageEnum
-from bible_io_references.bible_book_enums import BibleBookEnum
-from bible_io_references.languages import russian
+from src.bible_io_references.references import VerseRef, VerseRangeRef
+from src.bible_io_references.language_enums import BibleLanguageEnum
+from src.bible_io_references.bible_book_enums import BibleBookEnum
+from src.bible_io_references.languages import russian
 
 LANGUAGE = BibleLanguageEnum.RUSSIAN
 
