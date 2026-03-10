@@ -1,11 +1,13 @@
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Iterable, Self
+from typing import Dict, Iterable, TypeVar
 
 from .bible_book_enums import BibleBookEnum
 from .language_enums import BibleLanguageEnum
 from .languages import BOOK_ABBREVIATIONS_BY_LANGUAGE, BOOK_NAMES_BY_LANGUAGE
+
+ReferenceT = TypeVar("ReferenceT", bound="BaseReference")
 
 
 class ParseVerseRefError(ValueError):
@@ -307,10 +309,10 @@ class BaseReference(ABC):
 
     @classmethod
     def from_str(
-        cls,
+        cls: type[ReferenceT],
         ref: str,
         language: BibleLanguageEnum | str | None = BibleLanguageEnum.AUTO,
-    ) -> Self:
+    ) -> ReferenceT:
         """Parse a Bible reference string into the concrete reference type.
 
         Args:
@@ -318,7 +320,7 @@ class BaseReference(ABC):
             language: Language enum/code/``None`` controlling book parsing.
 
         Returns:
-            Self: Parsed reference object.
+            ReferenceT: Parsed reference object matching ``cls``.
 
         Raises:
             ParseVerseRefError: If the input is empty or invalid.
@@ -381,7 +383,11 @@ class BaseReference(ABC):
 
     @classmethod
     @abstractmethod
-    def _from_match(cls, match: re.Match[str], language: BibleLanguageEnum) -> Self:
+    def _from_match(
+        cls: type[ReferenceT],
+        match: re.Match[str],
+        language: BibleLanguageEnum,
+    ) -> ReferenceT:
         """Build a concrete reference object from a validated regex match.
 
         Args:
@@ -389,7 +395,7 @@ class BaseReference(ABC):
             language: Normalized language enum for book parsing.
 
         Returns:
-            Self: Parsed concrete reference object.
+            ReferenceT: Parsed concrete reference object matching ``cls``.
 
         Raises:
             ParseVerseRefError: If captured values are invalid.
@@ -563,3 +569,5 @@ def parse_reference(
         if verse_error.code != "pattern_mismatch":
             raise
     return VerseRangeRef.from_str(ref, language=language)
+
+
