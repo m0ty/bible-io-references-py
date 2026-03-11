@@ -77,6 +77,12 @@ def test_parse_invalid_reference_raises_parse_error(reference):
         VerseRef.from_str(reference)
 
 
+@pytest.mark.parametrize("reference", ["John 0:1", "John 1:0", "John -1:1", "John 1:-1"])
+def test_parse_non_positive_single_verse_components_raise_parse_error(reference):
+    with pytest.raises(ParseVerseRefError):
+        VerseRef.from_str(reference)
+
+
 def test_parse_error_includes_machine_readable_diagnostics():
     with pytest.raises(ParseVerseRefError) as exc_info:
         VerseRef.from_str("NotABook 3:16")
@@ -137,6 +143,15 @@ def test_parse_verse_range(reference, expected):
 
 @pytest.mark.parametrize("reference", ["John 3:16", "John 3:16-0", "NotABook 3:16-17"])
 def test_parse_invalid_verse_range_raises_parse_error(reference):
+    with pytest.raises(ParseVerseRefError):
+        VerseRangeRef.from_str(reference)
+
+
+@pytest.mark.parametrize(
+    "reference",
+    ["John 0:1-2", "John 1:0-2", "John 1:1-0", "John -1:1-2", "John 1:-1-2"],
+)
+def test_parse_non_positive_verse_range_components_raise_parse_error(reference):
     with pytest.raises(ParseVerseRefError):
         VerseRangeRef.from_str(reference)
 
