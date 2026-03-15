@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "Release-*"
+
+permissions:
+  contents: read
+
+jobs:
+  validate_tag:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.validate.outputs.version }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate tag matches package version
+        id: validate
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import tomllib
+          from pathlib import Path
+
+          release_tag = os.environ["RELEASE_TAG"]
+          tag_match = re.fullmatch(r"Release-(\d+\.\d+\.\d+)", release_tag)
+          if not tag_match:
+              raise SystemExit(
+                  f"Release tags must look like 'Release-x.x.x'; got {release_tag!r}."
+              )
+
+          pyproject = tomllib.loads(
+              Path("pyproject.toml").read_text(encoding="utf-8")
+          )
+          package_version = pyproject["project"]["version"]
+
+          if tag_match.group(1) != package_version:
+              raise SystemExit(
+                  f"Tag {release_tag!r} does not match package version {package_version!r}."
+              )
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              print(f"version={package_version}", file=handle)
+          PY
+
+  build:
+    name: Build release artifacts
+    runs-on: ubuntu-latest
+    needs: validate_tag
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --frozen --group dev
+
+      - name: Run tests
+        run: uv run pytest
+
+      - name: Run type checks
+        run: uv run mypy src
+
+      - name: Build distribution
+        run: uv build
+
+      - name: Smoke test wheel
+        run: |
+          python -m pip install dist/*.whl
+          python - <<'PY'
+          import bible_io_references
+
+          print(sorted(bible_io_references.__all__))
+          PY
+
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ needs.validate_tag.outputs.version }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs:
+      - validate_tag
+      - build
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.validate_tag.outputs.version }}
+          path: dist
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
