@@ -4,6 +4,10 @@ from enum import Enum
 class BibleLanguageEnum(Enum):
     """Supported languages for localized parsing."""
 
+    _code: str
+    _identifier_prefix: str
+    _aliases: tuple[str, ...]
+
     def __new__(
         cls,
         display_name: str,
