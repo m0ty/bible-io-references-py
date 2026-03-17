@@ -83,10 +83,13 @@ from bible_io_references import BibleLanguageEnum, VerseRef
 
 print(VerseRef.from_str("Juan 3:16"))
 print(VerseRef.from_str("Mat. 5:9", language=BibleLanguageEnum.SPANISH))
+print(VerseRef.from_str("Juan 3:16", language="Spanish"))
 ```
 
 To restrict parsing to a specific language (to avoid cross-language abbreviation collisions),
-pass a language enum. The default is `AUTO`, which searches all supported languages.
+pass a language enum or string. `BibleLanguageEnum.from_str(...)` accepts full names
+like `Spanish`, short codes like `es`, and `bible-io-json` identifier prefixes like
+`spa` or `spa-rva-1602`. The default is `AUTO`, which searches all supported languages.
 
 ### AUTO-mode precedence and collision diagnostics
 
@@ -129,7 +132,7 @@ except ParseVerseRefError as exc:
 ## Core types
 
 - `BibleBookEnum`: canonical Bible books (including Protestant, Catholic deuterocanonical, and Eastern Orthodox additions in the enum)
-- `BibleLanguageEnum`: language strategy enum (`AUTO`, `es`, `he`, etc.)
+- `BibleLanguageEnum`: language strategy enum (`Auto`, `Spanish`, `Hebrew`, etc., with code aliases like `es` and `he`)
 - `VerseRef`: single verse (`book`, `chapter`, `verse`)
 - `VerseRangeRef`: range with `start` and `end` `VerseRef`s
 - `ParseVerseRefError`: parse failure exception with structured diagnostics (`code`, `details`)

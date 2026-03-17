@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bible-io-references"
-version = "1.0.0"
+version = "1.0.1"
 description = "Parse Bible verse references into structured Python objects."
 readme = "README.md"
 license = { file = "LICENSE" }

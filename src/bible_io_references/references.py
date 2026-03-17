@@ -54,8 +54,19 @@ class _BookTermLookup:
         _by_language (dict[str, dict[str, BibleBookEnum]]): Terms by language code.
     """
 
-    AUTO_LANGUAGE_PRECEDENCE: tuple[str, ...] = tuple(
-        language.code for language in BibleLanguageEnum if language != BibleLanguageEnum.AUTO
+    AUTO_LANGUAGE_PRECEDENCE: tuple[str, ...] = (
+        BibleLanguageEnum.ARABIC.code,
+        BibleLanguageEnum.CHINESE.code,
+        BibleLanguageEnum.FRENCH.code,
+        BibleLanguageEnum.GERMAN.code,
+        BibleLanguageEnum.HEBREW.code,
+        BibleLanguageEnum.HINDI.code,
+        BibleLanguageEnum.INDONESIAN.code,
+        BibleLanguageEnum.KOREAN.code,
+        BibleLanguageEnum.PORTUGUESE.code,
+        BibleLanguageEnum.RUSSIAN.code,
+        BibleLanguageEnum.SPANISH.code,
+        BibleLanguageEnum.TAGALOG.code,
     )
 
     def __init__(
@@ -108,6 +119,8 @@ class _BookTermLookup:
             if abbreviations is not None:
                 self._register_terms(table, abbreviations)
             self._by_language[code] = table
+
+        self._by_language[BibleLanguageEnum.ENGLISH.code] = dict(self._english)
 
     @property
     def auto_collisions(self) -> Dict[str, tuple[BibleBookEnum, ...]]:
